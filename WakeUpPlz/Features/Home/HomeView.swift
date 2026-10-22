@@ -23,22 +23,46 @@ struct HomeView: View {
                     info("알림 받을 사람", subtitle: store.routine.activeRecipients.isEmpty ? "문자 받을 사람을 선택해주세요" : store.routine.activeRecipients.map(\.name).joined(separator: ", "), icon: "person.crop.circle", value: "\(store.routine.activeRecipients.count)명")
                 }.buttonStyle(.plain)
                 Divider().overlay(Theme.border)
-                Button {
-                    store.update { r in
-                        if let quickOff { r.daysOff.removeAll { $0.id == quickOff.id } }
-                        else { let key = store.engine.dayKey(tomorrow); r.daysOff.append(.init(start: key, end: key, title: "내일 쉬기")) }
-                    }
-                } label: {
-                    HStack { Image(systemName: "moon"); Text(quickOff == nil ? "내일 쉬기" : "내일 쉬기 취소"); Spacer(); Text(store.engine.reasonOff(tomorrow, store.routine) ?? "근무일").font(.caption); Image(systemName: "chevron.right").font(.caption) }.padding(.vertical, 24)
-                }.buttonStyle(.plain)
-                NavigationLink { AutomationView() } label: {
-                    Label("문자 자동화 연결이 필요해요", systemImage: "link").font(.footnote).foregroundStyle(Theme.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                restTomorrow
+                if !store.routine.messageRemindersEnabled {
+                    NavigationLink { AutomationView() } label: {
+                        Label("문자 자동 발송이 꺼져 있어요", systemImage: "paperplane").font(.footnote).foregroundStyle(Theme.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    }.padding(.top, 8)
                 }
-                if store.scheduling { ProgressView("예약 적용 중").font(.caption).padding(.top) }
                 Text("모든 일정은 한국 시간 기준입니다.").font(.caption2).foregroundStyle(Theme.secondary).padding(.top, 28)
             }.padding(.horizontal, 24).padding(.bottom, 24)
         }.background(Theme.background).foregroundStyle(Theme.text).navigationTitle("WakeUpPlz").navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showVerification) { NavigationStack { VerificationView() } }
+    }
+    /// Tomorrow is already off for another reason (weekend, holiday, a registered day off).
+    private var otherReasonOff: String? { quickOff == nil ? store.engine.reasonOff(tomorrow, store.routine) : nil }
+    private var restTomorrow: some View {
+        let day = tomorrow.formatted(.dateTime.month().day().weekday())
+        let subtitle = otherReasonOff.map { "\(day) · \($0)\(Self.copula($0)) 쉬어요" }
+            ?? (quickOff == nil ? "\(day) · 켜면 알람과 문자를 쉬어요" : "\(day) · 알람과 문자를 쉬어요")
+        return HStack(spacing: 14) {
+            Image(systemName: "moon.zzz").font(.title3).foregroundStyle(Theme.primary).frame(width: 24)
+            VStack(alignment: .leading, spacing: 5) {
+                Text("내일 쉬기").font(.subheadline.weight(.medium))
+                Text(subtitle).font(.caption).foregroundStyle(Theme.secondary)
+            }
+            Spacer(minLength: 8)
+            if otherReasonOff == nil {
+                Toggle("내일 쉬기", isOn: Binding(get: { quickOff != nil }, set: { on in
+                    store.update { r in
+                        if on { let key = store.engine.dayKey(tomorrow); r.daysOff.append(.init(start: key, end: key, title: "내일 쉬기")) }
+                        else if let quickOff { r.daysOff.removeAll { $0.id == quickOff.id } }
+                    }
+                })).labelsHidden().tint(Theme.primary)
+            } else {
+                Text("쉬는 날").font(.subheadline).foregroundStyle(Theme.secondary)
+            }
+        }.padding(.vertical, 20)
+    }
+    /// "주말이라" vs "휴무라": pick the particle from the last syllable's final consonant.
+    private static func copula(_ word: String) -> String {
+        guard let scalar = word.unicodeScalars.last, (0xAC00...0xD7A3).contains(scalar.value) else { return "이라" }
+        return (scalar.value - 0xAC00) % 28 == 0 ? "라" : "이라"
     }
     private func info(_ title: String, subtitle: String, icon: String, value: String) -> some View {
         HStack(spacing: 14) {

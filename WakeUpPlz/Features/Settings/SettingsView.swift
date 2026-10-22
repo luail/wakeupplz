@@ -43,8 +43,10 @@ struct SettingsView: View {
                 }
             }.listRowBackground(Theme.surface)
             Section("자동화") {
-                NavigationLink("자동화 연결 및 설정 안내") { AutomationView() }
+                NavigationLink { AutomationView() } label: { LabeledContent("문자 자동 발송", value: store.routine.messageRemindersEnabled ? "켜짐" : "꺼짐") }
+                #if DEBUG
                 NavigationLink("발송 규칙 미리 테스트") { MessageLabView() }
+                #endif
             }.listRowBackground(Theme.surface)
             Section {
                 if let expiry = SigningExpiry.date {
@@ -55,7 +57,7 @@ struct SettingsView: View {
                 LabeledContent("예약된 알람 (테스트용)", value: scheduledAlarms.map { "\($0)개" } ?? "-")
                     .task(id: store.scheduling) { scheduledAlarms = try? AlarmManager.shared.alarms.count }
                 #endif
-                Text("예약은 앱을 열 때 앞으로 7일간 갱신됩니다. 서명은 Mac이 만료 전에 자동 갱신하며, 24시간 전까지 갱신되지 않으면 알림으로 알려드려요.").font(.caption).foregroundStyle(Theme.secondary)
+                Text("앱 서명은 Mac이 만료 전에 자동으로 갱신해요. 만료 24시간 전까지 갱신되지 않으면 알림으로 알려드려요.").font(.caption).foregroundStyle(Theme.secondary)
             }.listRowBackground(Theme.surface)
         }.appForm().navigationTitle("설정")
             .sheet(item: $editingTime) { TimeEditor(field: $0) }
@@ -117,17 +119,7 @@ struct AutomationView: View {
     var body: some View {
         Form {
             Section {
-                Label("실제 문자 발송 미검증", systemImage: "link.badge.plus")
-                Text("앱은 문자를 직접 자동 전송할 수 없어요. iOS 27의 알림 자동화와 단축어 연결을 실제 iPhone에서 확인해야 합니다.")
-            }.listRowBackground(Theme.surface)
-            Section("최초 연결 순서") {
-                Text("1. 단축어에서 WakeUpPlz 알림을 받으면 실행하는 개인용 자동화를 만들어요.")
-                Text("2. ‘WakeUpPlz 미인증 발송 요청 가져오기’를 실행해요. 빈 결과면 종료해요.")
-                Text("3. JSON을 사전으로 변환하고 recipients의 각 번호에 text를 ‘메시지 보내기’로 전달해요.")
-                Text("4. 잠금 상태 실행과 인증 후 취소를 확인한 뒤 사용해요. 시각은 앱에서만 변경합니다.")
-            }.listRowBackground(Theme.surface)
-            Section {
-                Toggle("자동화용 알림 예약", isOn: Binding(get: { store.routine.messageRemindersEnabled }, set: { enabled in
+                Toggle("문자 자동 발송", isOn: Binding(get: { store.routine.messageRemindersEnabled }, set: { enabled in
                     Task {
                         if enabled {
                             guard !store.routine.activeRecipients.isEmpty else { store.error = "먼저 문자를 받을 사람을 선택해주세요."; return }
@@ -137,12 +129,18 @@ struct AutomationView: View {
                         store.update { $0.messageRemindersEnabled = enabled }
                     }
                 }))
-            } footer: { Text("이 스위치는 알림만 예약합니다. 단축어 연결 완료나 문자 수신을 보장하지 않아요. 각 요청은 1회만 제공되며 전송 실패 시 자동 재시도하지 않습니다.") }
-            Section("알람 안내") {
-                Text("인증 전에는 알람을 꺼도 다시 울려요. 밀어서 끄면 10초 뒤, 측면 버튼 등 다른 방법으로 꺼도 15초마다 다시 울리고, 알람 12분 뒤까지 반복돼요. 기상 인증하면 모두 취소합니다. 강제 종료·권한 변경 등 모든 상황에서 재알림이 보장되지는 않습니다.")
-                Text("알람 출력은 iPhone의 시스템 제한을 따릅니다. 최대 음량을 초과하거나 음량을 강제로 고정할 수 없습니다.")
-            }.font(.footnote).listRowBackground(Theme.surface)
-        }.appForm().navigationTitle("자동화 연결").navigationBarTitleDisplayMode(.inline)
+            } footer: { Text("인증하지 않으면 알람 10분 뒤부터 1분 간격으로 3번, 선택한 사람에게 문자를 보내요. 중간에 인증하면 남은 문자는 보내지 않아요.") }
+            Section("처음 한 번만 연결하기") {
+                Text("1. 파일 앱 › 나의 iPhone › WakeUpPlz에서 ‘WakeUpPlz 문자 발송’을 열어 단축어에 추가해요.")
+                Text("2. 단축어 › 자동화 › 알림 › WakeUpPlz를 고르고, ‘WakeUpPlz 문자 발송’을 실행하도록 설정해요.")
+                Text("3. 첫 발송 때 권한을 물으면 ‘항상 허용’을 눌러요. 이후 시각은 앱에서만 바꾸면 돼요.")
+            }.font(.subheadline).listRowBackground(Theme.surface)
+            Section("알아두기") {
+                Text("인증 전에는 알람을 꺼도 알람 12분 뒤까지 계속 다시 울려요.")
+                Text("문자 전송에 실패해도 자동으로 다시 보내지 않아요.")
+                Text("알람 소리는 벨소리 음량을 따르며, 기기의 최대 음량을 넘을 수 없어요.")
+            }.font(.footnote).foregroundStyle(Theme.secondary).listRowBackground(Theme.surface)
+        }.appForm().navigationTitle("문자 자동 발송").navigationBarTitleDisplayMode(.inline)
     }
 }
 struct MessageLabView: View {

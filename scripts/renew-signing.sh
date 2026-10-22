@@ -13,7 +13,8 @@ device="${1:-$(cat "$state/device" 2>/dev/null || true)}"
 [[ -n "$device" ]] || { print -u2 '연결된 iPhone이 없습니다. USB로 연결하거나 UDID를 인자로 넘겨주세요.'; exit 1; }
 profiles="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
 backup="$state/profile-backup/$(date +%Y%m%d-%H%M%S)"
-app="$root/DerivedDataDevice/Build/Products/Debug-iphoneos/WakeUpPlz.app"
+# Release hides test-only UI (#if DEBUG) on the phone that is used every day.
+app="$root/DerivedDataDevice/Build/Products/Release-iphoneos/WakeUpPlz.app"
 
 # Fail before touching the profile if the phone is unreachable.
 xcrun devicectl device info details --device "$device" > /dev/null 2>&1 \
@@ -28,7 +29,7 @@ done
 
 cd "$root"
 # Lower CPU priority so the build yields to whatever the user is doing.
-if ! nice -n 10 xcodebuild -project WakeUpPlz.xcodeproj -scheme WakeUpPlz -destination 'generic/platform=iOS' \
+if ! nice -n 10 xcodebuild -project WakeUpPlz.xcodeproj -scheme WakeUpPlz -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath DerivedDataDevice -allowProvisioningUpdates build > "$backup/build.log" 2>&1; then
   mv "$backup"/*.mobileprovision(N) "$profiles/" 2>/dev/null || true
   print -u2 "빌드 실패(Xcode의 Apple 계정 로그인 만료 가능): $backup/build.log"
