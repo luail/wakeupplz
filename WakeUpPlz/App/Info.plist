@@ -4,5 +4,10 @@
 <dict>
     <key>NSAlarmKitUsageDescription</key>
     <string>정해진 시각에 기상 알람을 울리기 위해 필요합니다.</string>
+    <!-- Shows Documents in the Files app so the message shortcut can be copied in over USB. -->
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
 </dict>
 </plist>
