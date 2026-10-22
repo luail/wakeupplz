@@ -1,0 +1,9 @@
+# 대한민국 공휴일 데이터
+
+자료 확인일: 2026-10-22. 번들 데이터 지원 범위: 2026–2027년, 한국 시간.
+
+- 한국천문연구원 월력요항: https://astro.kasi.re.kr/kor/life/post/calendarData?year=2026
+- 2027 월력요항: https://astro.kasi.re.kr/kor/life/post/calendarData?year=2027
+- 우주항공청 2027 월력요항 및 2026 공휴일 변경 안내: https://www.kasa.go.kr/prog/plcyBrf/brief/kor/sub01_01_04/view.do?plcyBrfNo=431
+
+법정 공휴일을 앱 내부 일정에 자동 적용하는 기능이다. 공휴일 데이터의 온라인 자동 갱신은 아직 구현하지 않았다. 임시공휴일은 직접 휴무일로 등록하거나 번들을 업데이트해야 한다. 지원 범위 밖에서는 공휴일 제외가 켜져 있을 때 미인증 문자 요청 생성을 중단한다. 알람은 주말/직접 등록 휴무를 적용하며 미래 법정 공휴일 여부를 보장하지 않는다.
