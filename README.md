@@ -53,5 +53,6 @@
 - `swift test` — 일정/휴무/인증/회차 테스트
 - `python3 scripts/generate-project.py` — Swift 파일·기본 WAV를 스캔하여 Xcode 프로젝트 재생성
 - `scripts/check-signing.sh /path/to/WakeUpPlz.app` — 서명 프로필 만료일 확인
+- `scripts/renew-signing.sh [기기 UDID]` (생략 시 연결된 iPhone 자동 선택) — 캐시된 무료 프로필을 `.local/`로 옮겨 새 7일 프로필을 발급받고, 빌드 후 연결된 iPhone에 설치
 
 자세한 제품 결정과 미검증 내용은 `docs/`에 있습니다.
