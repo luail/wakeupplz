@@ -57,12 +57,33 @@ struct WakeMetadata: AlarmMetadata { var day: String }
         await SigningExpiry.scheduleWarning()
         return dates.last
     }
+    private var observer: Task<Void, Never>?
+    /// Dismissing the in-app alert (its X) does not run the stop intent, so while the app is
+    /// running, re-arm whenever an alerting alarm goes away before verification.
+    func observeAlerts() {
+        guard observer == nil else { return }
+        observer = Task {
+            var alerting = Set<UUID>()
+            for await alarms in AlarmManager.shared.alarmUpdates {
+                let current = Set(alarms.filter { $0.state == .alerting }.map(\.id))
+                let ended = !alerting.subtracting(current).isEmpty
+                alerting = current
+                if ended { try? await retryIfNeeded(day: engine.dayKey(.now)) }
+            }
+        }
+    }
     func retryIfNeeded(day: String) async throws {
         let routine = RoutineStore.shared.routine
         let now = Date.now
         guard engine.shouldContinueAlarm(on: engine.day(day), routine: routine, now: now) else { return }
         let date = now.addingTimeInterval(10)
         guard engine.dayKey(date) == day else { return }
+        // Both the stop intent and the foreground observer may call this; one pending retry is enough.
+        let pendingRetry = try AlarmManager.shared.alarms.contains { alarm in
+            guard alarm.id.uuidString.hasPrefix("BBBBBBBB"), alarm.state == .scheduled, case .fixed(let at) = alarm.schedule else { return false }
+            return at > now
+        }
+        guard !pendingRetry else { return }
         // Fresh ID per retry so repeated stops never collide with a previous retry; the
         // BBBBBBBB prefix lets reconcile keep it until verification.
         let id = UUID(uuidString: "BBBBBBBB" + UUID().uuidString.dropFirst(8))!
