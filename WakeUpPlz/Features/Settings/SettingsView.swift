@@ -46,7 +46,10 @@ struct SettingsView: View {
                 NavigationLink("발송 규칙 미리 테스트") { MessageLabView() }
             }.listRowBackground(Theme.surface)
             Section {
-                Text("예약은 앱을 열 때 앞으로 7일간 갱신됩니다. 무료 개발자 서명의 만료와 실제 기기 자동화는 별도 확인이 필요해요.").font(.caption).foregroundStyle(Theme.secondary)
+                if let expiry = SigningExpiry.date {
+                    LabeledContent("앱 서명 만료", value: expiry.formatted(.dateTime.month().day().hour().minute()))
+                }
+                Text("예약은 앱을 열 때 앞으로 7일간 갱신됩니다. 서명은 Mac이 만료 전에 자동 갱신하며, 24시간 전까지 갱신되지 않으면 알림으로 알려드려요.").font(.caption).foregroundStyle(Theme.secondary)
             }.listRowBackground(Theme.surface)
         }.appForm().navigationTitle("설정")
             .sheet(item: $editingTime) { TimeEditor(field: $0) }

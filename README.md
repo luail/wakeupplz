@@ -53,6 +53,8 @@
 - `swift test` — 일정/휴무/인증/회차 테스트
 - `python3 scripts/generate-project.py` — Swift 파일·기본 WAV를 스캔하여 Xcode 프로젝트 재생성
 - `scripts/check-signing.sh /path/to/WakeUpPlz.app` — 서명 프로필 만료일 확인
-- `scripts/renew-signing.sh [기기 UDID]` (생략 시 연결된 iPhone 자동 선택) — 캐시된 무료 프로필을 `.local/`로 옮겨 새 7일 프로필을 발급받고, 빌드 후 연결된 iPhone에 설치
+- `scripts/renew-signing.sh [기기 UDID]` — 캐시된 무료 프로필을 `.local/`로 옮겨 새 7일 프로필을 발급받고, 빌드 후 iPhone에 설치. 기기는 인자 > 마지막 사용 기기 > 연결된 iPhone 순
+- `scripts/install-auto-renew.sh` — launchd로 3시간마다 `scripts/auto-renew.sh` 실행. 설치본 만료 36시간 전부터 갱신 시도, 결과는 macOS 알림과 `.local/auto-renew.log`. `--uninstall`로 제거
+- 앱 설정 화면에 서명 만료일 표시, 만료 24시간 전 로컬 알림
 
 자세한 제품 결정과 미검증 내용은 `docs/`에 있습니다.

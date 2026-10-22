@@ -54,6 +54,7 @@ struct WakeMetadata: AlarmMetadata { var day: String }
             parts.timeZone = engine.calendar.timeZone
             try await center.add(UNNotificationRequest(identifier: "wup-" + slot.id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
         }
+        await SigningExpiry.scheduleWarning()
         return dates.last
     }
     func retryIfNeeded(day: String) async throws {

@@ -6,3 +6,4 @@ DerivedDataDevice/
 xcuserdata/
 .DS_Store
 .local/
+*.swp
