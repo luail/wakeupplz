@@ -23,7 +23,7 @@ struct SettingsView: View {
                 }))
                 Button { editingTime = .alarm } label: { LabeledContent("알람 시각", value: RoutineEngine.clock(store.routine.alarmMinute)) }.foregroundStyle(Theme.text)
                 LabeledContent("첫 문자 시각", value: "알람 10분 뒤 · " + RoutineEngine.clock(store.routine.messageMinute))
-                NavigationLink { ContactsView() } label: { LabeledContent("알림 받을 사람", value: "\(store.routine.recipients.count)명") }
+                NavigationLink { ContactsView() } label: { LabeledContent("알림 받을 사람", value: "\(store.routine.activeRecipients.count)명 선택") }
                 NavigationLink { SoundsView() } label: { LabeledContent("알람 사운드", value: store.routine.sound.replacingOccurrences(of: ".wav", with: "")) }
             }.listRowBackground(Theme.surface)
             Section("기상 인증") {
@@ -124,7 +124,7 @@ struct AutomationView: View {
                 Toggle("자동화용 알림 예약", isOn: Binding(get: { store.routine.messageRemindersEnabled }, set: { enabled in
                     Task {
                         if enabled {
-                            guard !store.routine.recipients.isEmpty else { store.error = "먼저 알림 받을 사람을 등록해주세요."; return }
+                            guard !store.routine.activeRecipients.isEmpty else { store.error = "먼저 문자를 받을 사람을 선택해주세요."; return }
                             do { guard try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) else { store.error = "알림 권한이 필요해요."; return } }
                             catch { store.error = error.localizedDescription; return }
                         }

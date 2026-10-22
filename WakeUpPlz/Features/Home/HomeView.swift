@@ -20,7 +20,7 @@ struct HomeView: View {
                 info("미인증 문자", subtitle: "1분 간격 3회 · 인증하면 남은 회차 취소", icon: "paperplane", value: RoutineEngine.clock(store.routine.messageMinute))
                 Divider().overlay(Theme.border)
                 NavigationLink { ContactsView() } label: {
-                    info("알림 받을 사람", subtitle: store.routine.recipients.isEmpty ? "연락처에서 선택해주세요" : store.routine.recipients.map(\.name).joined(separator: ", "), icon: "person.crop.circle", value: "\(store.routine.recipients.count)명")
+                    info("알림 받을 사람", subtitle: store.routine.activeRecipients.isEmpty ? "문자 받을 사람을 선택해주세요" : store.routine.activeRecipients.map(\.name).joined(separator: ", "), icon: "person.crop.circle", value: "\(store.routine.activeRecipients.count)명")
                 }.buttonStyle(.plain)
                 Divider().overlay(Theme.border)
                 Button {

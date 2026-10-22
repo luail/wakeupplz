@@ -13,12 +13,18 @@ struct ContactsView: View {
                 Button { picker = true } label: { Label("연락처에서 가져오기", systemImage: "person.crop.circle.badge.plus") }
                 Button("직접 입력하기") { manual = true }.foregroundStyle(Theme.secondary)
             } footer: { Text("선택한 이름과 전화번호만 이 iPhone에 저장해요. 번호가 여러 개라면 문자를 받을 번호를 선택하세요.") }
-            Section("알림 받을 사람") {
+            Section {
                 if store.routine.recipients.isEmpty { Text("아직 등록된 연락처가 없어요.").foregroundStyle(Theme.secondary) }
                 ForEach(store.routine.recipients) { recipient in
-                    VStack(alignment: .leading, spacing: 6) { Text(recipient.name); Text(recipient.phone).font(.subheadline).foregroundStyle(Theme.secondary) }
+                    Button { store.update { r in if let i = r.recipients.firstIndex(where: { $0.id == recipient.id }) { r.recipients[i].selected.toggle() } } } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: recipient.selected ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(Theme.primary)
+                            VStack(alignment: .leading, spacing: 6) { Text(recipient.name); Text(recipient.phone).font(.subheadline).foregroundStyle(Theme.secondary) }
+                            Spacer()
+                        }.contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityValue(recipient.selected ? "선택됨" : "선택 안 됨")
                 }.onDelete { offsets in store.update { $0.recipients.remove(atOffsets: offsets) } }
-            }
+            } header: { Text("알림 받을 사람") } footer: { Text("체크한 사람에게만 문자가 가요. 눌러서 선택하거나 해제하고, 왼쪽으로 밀어 삭제할 수 있어요.") }
         }.appForm().navigationTitle("알림 받을 사람").navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $picker) { ContactPicker { name, phone in _ = store.addRecipient(name: name, phone: phone) } }
             .sheet(isPresented: $manual) {

@@ -69,9 +69,9 @@ import Observation
         return update { $0.recipients.append(Recipient(name: name.isEmpty ? number : name, phone: number)) }
     }
     func claimMessage(now: Date = .now) -> MessagePayload? {
-        guard routine.messageRemindersEnabled, !routine.recipients.isEmpty,
+        guard routine.messageRemindersEnabled, !routine.activeRecipients.isEmpty,
               let slot = engine.dueSlot(routine, now: now) else { return nil }
-        let payload = MessagePayload(id: slot.id, ordinal: slot.ordinal, recipients: routine.recipients.map(\.phone), text: routine.message)
+        let payload = MessagePayload(id: slot.id, ordinal: slot.ordinal, recipients: routine.activeRecipients.map(\.phone), text: routine.message)
         // Persist before handing off. A failed Shortcuts send is not retried automatically.
         guard update({ $0.claimedSlots.insert(slot.id) }) else { return nil }
         return payload

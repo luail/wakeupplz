@@ -4,6 +4,19 @@ struct Recipient: Codable, Identifiable, Equatable, Sendable {
     var id = UUID()
     var name: String
     var phone: String
+    /// Only selected recipients receive the unverified message; others stay saved for later.
+    var selected = true
+    init(id: UUID = UUID(), name: String, phone: String, selected: Bool = true) {
+        self.id = id; self.name = name; self.phone = phone; self.selected = selected
+    }
+    // Files saved before selection existed have no `selected` key; treat those as selected.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        phone = try c.decode(String.self, forKey: .phone)
+        selected = try c.decodeIfPresent(Bool.self, forKey: .selected) ?? true
+    }
     static func normalized(_ input: String) -> String {
         var value = input.filter { $0.isASCII && $0.isNumber }
         if input.hasPrefix("+") { value = "+" + value }
@@ -22,6 +35,7 @@ struct Routine: Codable, Equatable, Sendable {
     var phrase = "일어났어!"
     var message = "아직 기상 인증을 하지 않았어요. WakeUpPlz에서 확인 부탁드려요."
     var recipients: [Recipient] = []
+    var activeRecipients: [Recipient] { recipients.filter(\.selected) }
     var excludeWeekends = true
     var excludeHolidays = true
     var daysOff: [DayOff] = []

@@ -35,7 +35,7 @@ struct WakeMetadata: AlarmMetadata { var day: String }
         UserDefaults.standard.set(configuration, forKey: "lastAlarmConfiguration")
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests().filter { $0.identifier.hasPrefix("wup-") }
-        let slots = routine.messageRemindersEnabled && !routine.recipients.isEmpty ? (0..<7).flatMap { offset in
+        let slots = routine.messageRemindersEnabled && !routine.activeRecipients.isEmpty ? (0..<7).flatMap { offset in
             engine.slots(routine, on: engine.calendar.date(byAdding: .day, value: offset, to: now)!).filter { $0.date > now && !routine.claimedSlots.contains($0.id) }
         } : []
         let desiredNotifications = Dictionary(uniqueKeysWithValues: slots.map { ("wup-" + $0.id, $0.date) })

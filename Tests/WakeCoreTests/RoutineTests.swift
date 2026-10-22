@@ -66,4 +66,11 @@ struct RoutineTests {
         r.daysOff = [.init(start: "2026-10-22", end: "2026-10-22", title: "휴무")]
         #expect(!engine.shouldContinueAlarm(on: fired, routine: r, now: now))
     }
+    @Test func onlySelectedRecipientsAndLegacyDecode() throws {
+        var r = Routine()
+        r.recipients = [.init(name: "A", phone: "01011112222"), .init(name: "B", phone: "01033334444", selected: false)]
+        #expect(r.activeRecipients.map(\.name) == ["A"])
+        let legacy = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"C","phone":"01055556666"}"#
+        #expect(try JSONDecoder().decode(Recipient.self, from: Data(legacy.utf8)).selected)
+    }
 }
