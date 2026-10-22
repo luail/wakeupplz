@@ -103,6 +103,20 @@ struct RoutineEngine: Sendable {
             return alarm
         }
     }
+    /// Pre-scheduled re-rings 1...count minutes after each alarm. Some ways of silencing an alarm
+    /// (side button, in-app dismiss) never run the stop intent, so re-ringing cannot rely on it.
+    /// Unlike alarmDates, today's backups stay wanted after the main alarm time has passed.
+    func backupAlarmDates(_ routine: Routine, now: Date, days: Int = 7, count: Int = 12) -> [(minute: Int, date: Date)] {
+        guard routine.validationError == nil else { return [] }
+        return (0..<days).flatMap { offset -> [(minute: Int, date: Date)] in
+            let date = calendar.date(byAdding: .day, value: offset, to: now)!
+            guard reasonOff(date, routine) == nil, !routine.verifiedDays.contains(dayKey(date)) else { return [] }
+            return (1...count).compactMap { k in
+                let at = time(routine.alarmMinute + k, on: date)
+                return at > now && dayKey(at) == dayKey(date) ? (k, at) : nil
+            }
+        }
+    }
     func slots(_ routine: Routine, on date: Date) -> [MessageSlot] {
         guard routine.validationError == nil, reasonOff(date, routine) == nil,
               !routine.verifiedDays.contains(dayKey(date)),

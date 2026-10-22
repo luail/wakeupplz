@@ -73,4 +73,14 @@ struct RoutineTests {
         let legacy = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"C","phone":"01055556666"}"#
         #expect(try JSONDecoder().decode(Recipient.self, from: Data(legacy.utf8)).selected)
     }
+    @Test func backupAlarmsSurviveMainAlarmUntilVerified() {
+        var r = Routine()
+        let afterMain = at(503)
+        let today = engine.backupAlarmDates(r, now: afterMain).filter { engine.dayKey($0.date) == "2026-10-22" }
+        #expect(today.map(\.minute) == Array(4...12))
+        #expect(today.first?.date == at(504))
+        r.verifiedDays.insert("2026-10-22")
+        #expect(engine.backupAlarmDates(r, now: afterMain).allSatisfy { engine.dayKey($0.date) != "2026-10-22" })
+        #expect(engine.backupAlarmDates(r, now: at(400, day: "2026-10-24")).allSatisfy { engine.dayKey($0.date) != "2026-10-24" })
+    }
 }

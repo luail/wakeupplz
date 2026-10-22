@@ -12,7 +12,9 @@ struct WakeMetadata: AlarmMetadata { var day: String }
     func reconcile(_ routine: Routine) async throws -> Date? {
         let now = Date.now
         let dates = routine.alarmEnabled ? engine.alarmDates(routine, now: now) : []
-        let desired = Dictionary(uniqueKeysWithValues: dates.map { (alarmID($0), $0) })
+        var desired = Dictionary(uniqueKeysWithValues: dates.map { (alarmID($0), $0) })
+        let backups = routine.alarmEnabled ? engine.backupAlarmDates(routine, now: now) : []
+        for backup in backups { desired[backupID(backup.date, minute: backup.minute)] = backup.date }
         let configuration = "\(routine.alarmMinute)-\(routine.sound)"
         let alarms = try AlarmManager.shared.alarms
         for alarm in alarms {
@@ -30,7 +32,11 @@ struct WakeMetadata: AlarmMetadata { var day: String }
             }
         }
         let existing = try Set(AlarmManager.shared.alarms.map(\.id))
-        for (id, date) in desired where !existing.contains(id) { try await schedule(id: id, date: date, routine: routine) }
+        for (id, date) in desired where !existing.contains(id) {
+            // A backup that the system refuses must not block the main alarms.
+            if id.uuidString.hasPrefix("CCCCCCCC") { try? await schedule(id: id, date: date, routine: routine) }
+            else { try await schedule(id: id, date: date, routine: routine) }
+        }
         lastAlarmConfiguration = configuration
         UserDefaults.standard.set(configuration, forKey: "lastAlarmConfiguration")
         let center = UNUserNotificationCenter.current()
@@ -92,6 +98,10 @@ struct WakeMetadata: AlarmMetadata { var day: String }
     private func alarmID(_ date: Date) -> UUID {
         let key = engine.dayKey(date).replacingOccurrences(of: "-", with: "")
         return UUID(uuidString: "AAAAAAAA-0000-0000-0000-" + key + "0000")!
+    }
+    private func backupID(_ date: Date, minute: Int) -> UUID {
+        let key = engine.dayKey(date).replacingOccurrences(of: "-", with: "")
+        return UUID(uuidString: "CCCCCCCC-" + String(format: "%04d", minute) + "-0000-0000-" + key + "0000")!
     }
     private func schedule(id: UUID, date: Date, routine: Routine) async throws {
         let day = engine.dayKey(date)
