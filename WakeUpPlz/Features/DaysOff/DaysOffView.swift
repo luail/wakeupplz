@@ -31,9 +31,9 @@ struct DaysOffView: View {
                             VStack(spacing: 2) {
                                 Text("\(number)").font(.body.monospacedDigit().weight(kind == .work ? .regular : .semibold))
                                 // Holiday/day-off name in the cell; weekends need no label.
-                                Text(kind == .extraWork ? "출근" : kind == .holiday || kind == .personal ? (off ?? "") : " ").font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7)
+                                Text(kind == .extraWork ? "출근" : kind == .holiday ? Self.shortHoliday(off ?? "") : kind == .personal ? (off ?? "") : " ").font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7)
                             }.padding(.horizontal, 2).frame(maxWidth: .infinity, minHeight: 50)
-                            .foregroundStyle(kind == .personal ? Color.white : kind == .work ? Theme.text : kind == .holiday || kind == .extraWork ? Theme.primary : Theme.secondary)
+                            .foregroundStyle(kind == .personal ? Color.white : kind == .work ? Theme.text : kind == .holiday ? Theme.accent : kind == .extraWork ? Theme.primary : Theme.secondary)
                             .background(kind.fill, in: RoundedRectangle(cornerRadius: 12))
                             .overlay {
                                 if calendar.isDateInToday(date) { RoundedRectangle(cornerRadius: 12).stroke(Theme.primary, lineWidth: 1.5) }
@@ -75,6 +75,12 @@ struct DaysOffView: View {
                 }
             }
     }
+    /// Fits a ~45pt cell: "대체공휴일(개천절)" → "대체휴일", "추석 다음 날" → "추석".
+    private static func shortHoliday(_ name: String) -> String {
+        if name.hasPrefix("대체공휴일") { return "대체휴일" }
+        for suffix in [" 전날", " 다음 날", " 연휴"] where name.hasSuffix(suffix) { return String(name.dropLast(suffix.count)) }
+        return name
+    }
     private var holidayFootnote: String {
         let years = KoreanHolidays.coveredYears.sorted()
         let range = years.count > 1 ? "\(years.first!)–\(years.last!)년" : "\(years.first ?? 2026)년"
@@ -92,7 +98,7 @@ struct DaysOffView: View {
             switch self {
             case .work, .extraWork: .clear
             case .weekend: Theme.secondary.opacity(0.12)
-            case .holiday: Theme.primary.opacity(0.2)
+            case .holiday: Theme.accent.opacity(0.22)
             case .personal: Theme.primary
             }
         }

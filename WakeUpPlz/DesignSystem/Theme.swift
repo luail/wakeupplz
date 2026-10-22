@@ -7,6 +7,8 @@ enum Theme {
     static let text = adaptive(0x1A1D21, 0xF5F4F2)
     static let secondary = adaptive(0x6B7280, 0xA8A29E)
     static let border = adaptive(0xE5E7EB, 0x3B3732)
+    /// Warm sand from the app icon's sun; marks holidays so they differ from gray weekends.
+    static let accent = adaptive(0xA0794F, 0xD4AE84)
     private static func adaptive(_ light: UInt, _ dark: UInt) -> Color {
         Color(uiColor: UIColor { traits in
             let hex = traits.userInterfaceStyle == .dark ? dark : light
