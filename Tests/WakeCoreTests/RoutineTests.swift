@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 @testable import WakeCore
-struct RoutineTests {
+@Suite(.serialized) struct RoutineTests {  // downloadedHolidaysReplaceBundledYear mutates shared holiday data
     let engine = RoutineEngine()
     func at(_ minute: Int, day: String = "2026-10-22") -> Date { engine.time(minute, on: engine.day(day)) }
     @Test func verificationOpensAtAlarmIsExactAndCancelsSlots() {
@@ -86,5 +86,26 @@ struct RoutineTests {
         // Friday verified-out of today: next two workdays skip the weekend.
         #expect(Set(engine.backupAlarmDates(r, now: afterMain).map { engine.dayKey($0.date) }) == ["2026-10-23", "2026-10-26"])
         #expect(engine.backupAlarmDates(r, now: at(400, day: "2026-10-23")).count == 96)
+    }
+    @Test func workDayOverridesWeekendAndHoliday() {
+        var r = Routine()
+        r.workDays = ["2026-10-24", "2026-10-09"]  // Saturday, 한글날
+        #expect(engine.reasonOff(engine.day("2026-10-24"), r) == nil)
+        #expect(engine.reasonOff(engine.day("2026-10-09"), r) == nil)
+        #expect(engine.slots(r, on: engine.day("2026-10-24")).count == 3)
+        r.daysOff = [.init(start: "2026-10-24", end: "2026-10-24", title: "휴가")]
+        #expect(engine.reasonOff(engine.day("2026-10-24"), r) == "휴가")
+    }
+    @Test func legacyRoutineDecodesWithDefaults() throws {
+        let saved = #"{"alarmMinute":420,"phrase":"기상","recipients":[]}"#
+        let r = try JSONDecoder().decode(Routine.self, from: Data(saved.utf8))
+        #expect(r.alarmMinute == 420 && r.phrase == "기상" && r.workDays.isEmpty && r.excludeWeekends)
+    }
+    @Test func downloadedHolidaysReplaceBundledYear() {
+        KoreanHolidays.setDownloaded([2028: ["2028-01-03": "임시공휴일"]])
+        defer { KoreanHolidays.setDownloaded([:]) }
+        #expect(KoreanHolidays.name(for: "2028-01-03") == "임시공휴일")
+        #expect(engine.slots(Routine(), on: engine.day("2028-01-04")).count == 3)  // 2028 now covered
+        #expect(KoreanHolidays.name(for: "2026-10-09") == "한글날")  // bundled year untouched
     }
 }

@@ -1,7 +1,16 @@
 import Foundation
-// Coverage is explicit: future and temporary holidays require a data update.
-// Sources and verification date: docs/holiday-data.md.
+import Synchronization
+// Bundled 2026–2027 data (docs/holiday-data.md) is the fallback; HolidayService replaces whole
+// years with downloaded data so new years and later-announced holidays arrive without an app update.
 enum KoreanHolidays {
+    private static let downloadedYears = Mutex<[Int: [String: String]]>([:])
+    static func setDownloaded(_ years: [Int: [String: String]]) { downloadedYears.withLock { $0 = years } }
+    static func name(for key: String) -> String? {
+        guard let year = Int(key.prefix(4)) else { return nil }
+        if let downloaded = downloadedYears.withLock({ $0[year] }) { return downloaded[key] }
+        return days[key]
+    }
+    static var coveredYears: Set<Int> { downloadedYears.withLock { Set($0.keys) }.union(2026...2027) }
     static let days: [String: String] = [
         "2026-01-01":"신정", "2026-02-16":"설날 연휴", "2026-02-17":"설날", "2026-02-18":"설날 연휴",
         "2026-03-01":"삼일절", "2026-03-02":"대체공휴일", "2026-05-01":"노동절", "2026-05-05":"어린이날",

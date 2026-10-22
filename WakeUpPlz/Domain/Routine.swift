@@ -39,6 +39,8 @@ struct Routine: Codable, Equatable, Sendable {
     var excludeWeekends = true
     var excludeHolidays = true
     var daysOff: [DayOff] = []
+    /// Weekend or holiday dates the user works on: alarm and messages run as on a workday.
+    var workDays: Set<String> = []
     var appearance = "system"
     var sound = "Morning Bell.wav"
     var alarmEnabled = false
@@ -46,6 +48,27 @@ struct Routine: Codable, Equatable, Sendable {
     var messageRemindersEnabled = false
     var verifiedDays: Set<String> = []
     var claimedSlots: Set<String> = []
+    init() {}
+    // Missing keys fall back to defaults, so adding a setting never breaks a saved file.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) throws -> T { try c.decodeIfPresent(T.self, forKey: key) ?? fallback }
+        let d = Routine()
+        alarmMinute = try value(.alarmMinute, d.alarmMinute)
+        phrase = try value(.phrase, d.phrase)
+        message = try value(.message, d.message)
+        recipients = try value(.recipients, d.recipients)
+        excludeWeekends = try value(.excludeWeekends, d.excludeWeekends)
+        excludeHolidays = try value(.excludeHolidays, d.excludeHolidays)
+        daysOff = try value(.daysOff, d.daysOff)
+        workDays = try value(.workDays, d.workDays)
+        appearance = try value(.appearance, d.appearance)
+        sound = try value(.sound, d.sound)
+        alarmEnabled = try value(.alarmEnabled, d.alarmEnabled)
+        messageRemindersEnabled = try value(.messageRemindersEnabled, d.messageRemindersEnabled)
+        verifiedDays = try value(.verifiedDays, d.verifiedDays)
+        claimedSlots = try value(.claimedSlots, d.claimedSlots)
+    }
     // Always 10 minutes after the alarm; older saved files' messageMinute key is ignored on decode.
     static let messageDelay = 10
     var messageMinute: Int { alarmMinute + Self.messageDelay }
@@ -83,12 +106,13 @@ struct RoutineEngine: Sendable {
     func reasonOff(_ date: Date, _ routine: Routine) -> String? {
         let key = dayKey(date)
         if let off = routine.daysOff.first(where: { $0.start <= key && key <= $0.end }) { return off.title }
-        if routine.excludeHolidays, let name = KoreanHolidays.days[key] { return name }
+        if routine.workDays.contains(key) { return nil }
+        if routine.excludeHolidays, let name = KoreanHolidays.name(for: key) { return name }
         if routine.excludeWeekends, calendar.isDateInWeekend(date) { return "주말" }
         return nil
     }
     func holidayCoverage(_ date: Date) -> Bool {
-        (2026...2027).contains(calendar.component(.year, from: date))
+        KoreanHolidays.coveredYears.contains(calendar.component(.year, from: date))
     }
     func shouldContinueAlarm(on date: Date, routine: Routine, now: Date) -> Bool {
         routine.alarmEnabled && routine.validationError == nil && dayKey(date) == dayKey(now)

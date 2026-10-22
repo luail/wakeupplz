@@ -12,6 +12,7 @@ import Observation
     private var scheduleTask: Task<Void, Never>?
     private var canSave = true
     init() {
+        _ = HolidayService.shared  // load downloaded holidays before any schedule or intent runs
         let folder = URL.applicationSupportDirectory.appending(path: "WakeUpPlz")
         file = folder.appending(path: "routine.json")
         do {

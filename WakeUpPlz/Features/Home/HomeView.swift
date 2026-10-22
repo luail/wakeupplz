@@ -34,12 +34,22 @@ struct HomeView: View {
         }.background(Theme.background).foregroundStyle(Theme.text).navigationTitle("WakeUpPlz").navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showVerification) { NavigationStack { VerificationView() } }
     }
-    /// Tomorrow is already off for another reason (weekend, holiday, a registered day off).
-    private var otherReasonOff: String? { quickOff == nil ? store.engine.reasonOff(tomorrow, store.routine) : nil }
+    private var tomorrowKey: String { store.engine.dayKey(tomorrow) }
+    /// A registered day off other than the quick toggle; edited from the calendar instead.
+    private var rangeOff: DayOff? { quickOff == nil ? store.routine.daysOff.first { $0.start <= tomorrowKey && tomorrowKey <= $0.end } : nil }
+    /// Weekend or holiday regardless of the user's overrides.
+    private var naturalOff: String? {
+        var plain = store.routine; plain.daysOff = []; plain.workDays = []
+        return store.engine.reasonOff(tomorrow, plain)
+    }
+    private var working: Bool { store.routine.workDays.contains(tomorrowKey) }
     private var restTomorrow: some View {
         let day = tomorrow.formatted(.dateTime.month().day().weekday())
-        let subtitle = otherReasonOff.map { "\(day) · \($0)\(Self.copula($0)) 이미 쉬어요" }
-            ?? (quickOff == nil ? "\(day) · 켜면 알람과 문자를 쉬어요" : "\(day) · 알람과 문자를 쉬어요")
+        let subtitle: String
+        if let rangeOff { subtitle = "\(day) · \(rangeOff.title) · 휴무일 탭에서 바꿀 수 있어요" }
+        else if quickOff != nil { subtitle = "\(day) · 알람과 문자를 쉬어요" }
+        else if let naturalOff { subtitle = working ? "\(day) · \(naturalOff)\(Self.copula(naturalOff).dropLast())지만 출근해요 · 알람이 울려요" : "\(day) · \(naturalOff)\(Self.copula(naturalOff)) 쉬어요 · 끄면 출근일로 알람이 울려요" }
+        else { subtitle = "\(day) · 켜면 알람과 문자를 쉬어요" }
         return HStack(spacing: 14) {
             Image(systemName: "moon.zzz").font(.title3).foregroundStyle(Theme.primary).frame(width: 24)
             VStack(alignment: .leading, spacing: 5) {
@@ -47,13 +57,16 @@ struct HomeView: View {
                 Text(subtitle).font(.caption).foregroundStyle(Theme.secondary)
             }
             Spacer(minLength: 8)
-            // Always a toggle so the state reads at a glance; days already off show as on and locked.
-            Toggle("내일 쉬기", isOn: Binding(get: { quickOff != nil || otherReasonOff != nil }, set: { on in
+            Toggle("내일 쉬기", isOn: Binding(get: { store.engine.reasonOff(tomorrow, store.routine) != nil }, set: { rest in
+                let key = tomorrowKey
                 store.update { r in
-                    if on { let key = store.engine.dayKey(tomorrow); r.daysOff.append(.init(start: key, end: key, title: "내일 쉬기")) }
+                    if naturalOff != nil {
+                        // Weekend/holiday: turning rest off marks tomorrow as a work day.
+                        if rest { r.workDays.remove(key) } else { r.workDays.insert(key) }
+                    } else if rest { r.daysOff.append(.init(start: key, end: key, title: "내일 쉬기")) }
                     else if let quickOff { r.daysOff.removeAll { $0.id == quickOff.id } }
                 }
-            })).labelsHidden().tint(Theme.primary).disabled(otherReasonOff != nil)
+            })).labelsHidden().tint(Theme.primary).disabled(rangeOff != nil)
         }.padding(.vertical, 20)
     }
     /// "주말이라" vs "휴무라": pick the particle from the last syllable's final consonant.
