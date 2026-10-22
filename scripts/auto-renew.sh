@@ -5,7 +5,7 @@ set -u
 root="${0:A:h:h}"
 state="$root/.local"
 log="$state/auto-renew.log"
-renew_hours="${RENEW_HOURS:-36}"
+renew_hours="${RENEW_HOURS:-72}"
 mkdir -p "$state"
 notify() { /usr/bin/osascript -e "display notification \"$1\" with title \"WakeUpPlz 서명 갱신\"" > /dev/null 2>&1 || true; }
 

@@ -27,7 +27,8 @@ for profile in "$profiles"/*.mobileprovision(N); do
 done
 
 cd "$root"
-if ! xcodebuild -project WakeUpPlz.xcodeproj -scheme WakeUpPlz -destination 'generic/platform=iOS' \
+# Lower CPU priority so the build yields to whatever the user is doing.
+if ! nice -n 10 xcodebuild -project WakeUpPlz.xcodeproj -scheme WakeUpPlz -destination 'generic/platform=iOS' \
   -derivedDataPath DerivedDataDevice -allowProvisioningUpdates build > "$backup/build.log" 2>&1; then
   mv "$backup"/*.mobileprovision(N) "$profiles/" 2>/dev/null || true
   print -u2 "빌드 실패(Xcode의 Apple 계정 로그인 만료 가능): $backup/build.log"

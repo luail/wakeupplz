@@ -27,7 +27,7 @@
 - build 6: 생성 프로젝트 Debug 설정에 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG가 없어 #if DEBUG 코드가 빠졌던 문제 수정. 바이너리에 초기화 버튼 포함 확인, 실제 iPhone에 build 6 설치.
 - 실기기 확인(사용자, build 6, iOS 26.6): 잠금 화면에서 밀어서 중지해도 10초 뒤 다시 울림. 기상 인증 후에는 더 울리지 않음. 재부팅·앱 강제 종료 상태는 미확인.
 - 2026-10-23 무료 서명 갱신 확인: 캐시 프로필(만료 10-29 20:07 KST)을 치우고 재빌드하자 새 프로필 발급, 만료 2026-10-30 02:02:38 KST(발급 시점 +7일). scripts/renew-signing.sh로 자동화. iPhone이 iOS 27.0.1 업데이트 중이라 새 프로필 앱은 아직 미설치.
-- build 7: 서명 자동 갱신 구성. renew-signing.sh(도달 확인→프로필 재발급→빌드→설치, 실패 시 프로필 복구), auto-renew.sh(36시간 이내만 갱신), install-auto-renew.sh(launchd 3시간 주기). 앱에 만료일 표시와 24시간 전 알림. 2026-10-23 USB로 전체 흐름 실행 성공, iPhone build 7 설치, 만료 2026-10-30 02:15:35 KST. Wi-Fi 설치와 launchd 실제 실행은 미확인.
+- build 7: 서명 자동 갱신 구성. renew-signing.sh(도달 확인→프로필 재발급→빌드→설치, 실패 시 프로필 복구), auto-renew.sh(3일 이내만 갱신, 빌드는 nice 10), install-auto-renew.sh(launchd 3시간 주기). 앱에 만료일 표시와 24시간 전 알림. 2026-10-23 USB로 전체 흐름 실행 성공, iPhone build 7 설치, 만료 2026-10-30 02:15:35 KST. Wi-Fi 설치와 launchd 실제 실행은 미확인.
 - 시뮬레이터 iOS 27에서 로컬 알림 수신 확인(docs/screenshots/local-notification.png), 단축어에 앱 알림 트리거가 있음을 확인.
 
 ## 남은 검증 / 구현

@@ -24,4 +24,4 @@ cat > "$plist" <<EOF
 </plist>
 EOF
 launchctl bootstrap "gui/$(id -u)" "$plist"
-print "자동 갱신 설치 완료: 3시간마다 확인, 만료 36시간 전부터 갱신 시도."
+print "자동 갱신 설치 완료: 3시간마다 확인, 만료 3일 전부터 갱신 시도."
