@@ -9,6 +9,8 @@ struct RetryAlarmIntent: LiveActivityIntent {
     init(day: String) { self.day = day }
     @MainActor func perform() async throws -> some IntentResult {
         try await ScheduleService.shared.retryIfNeeded(day: day)
+        // Runs on most mornings even if the app is never opened, so keep backup alarms rolling.
+        await RoutineStore.shared.refreshSchedulesAndWait()
         return .result()
     }
 }

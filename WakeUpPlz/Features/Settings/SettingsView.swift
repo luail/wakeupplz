@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var message = ""
     @State private var editingMessage = false
     @State private var editingTime: RoutineTimeField?
+    @State private var scheduledAlarms: Int?
     var body: some View {
         Form {
             Section("기상 설정") {
@@ -49,6 +50,11 @@ struct SettingsView: View {
                 if let expiry = SigningExpiry.date {
                     LabeledContent("앱 서명 만료", value: expiry.formatted(.dateTime.month().day().hour().minute()))
                 }
+                #if DEBUG
+                // Test-only: confirms the system accepted all main + backup alarms.
+                LabeledContent("예약된 알람 (테스트용)", value: scheduledAlarms.map { "\($0)개" } ?? "-")
+                    .task(id: store.scheduling) { scheduledAlarms = try? AlarmManager.shared.alarms.count }
+                #endif
                 Text("예약은 앱을 열 때 앞으로 7일간 갱신됩니다. 서명은 Mac이 만료 전에 자동 갱신하며, 24시간 전까지 갱신되지 않으면 알림으로 알려드려요.").font(.caption).foregroundStyle(Theme.secondary)
             }.listRowBackground(Theme.surface)
         }.appForm().navigationTitle("설정")
@@ -133,7 +139,7 @@ struct AutomationView: View {
                 }))
             } footer: { Text("이 스위치는 알림만 예약합니다. 단축어 연결 완료나 문자 수신을 보장하지 않아요. 각 요청은 1회만 제공되며 전송 실패 시 자동 재시도하지 않습니다.") }
             Section("알람 안내") {
-                Text("인증 전에는 알람을 꺼도 다시 울려요. 밀어서 끄면 10초 뒤, 측면 버튼 등 다른 방법으로 끄면 1분 안에 다시 울리고, 알람 12분 뒤까지 반복돼요. 기상 인증하면 모두 취소합니다. 강제 종료·권한 변경 등 모든 상황에서 재알림이 보장되지는 않습니다.")
+                Text("인증 전에는 알람을 꺼도 다시 울려요. 밀어서 끄면 10초 뒤, 측면 버튼 등 다른 방법으로 꺼도 15초마다 다시 울리고, 알람 12분 뒤까지 반복돼요. 기상 인증하면 모두 취소합니다. 강제 종료·권한 변경 등 모든 상황에서 재알림이 보장되지는 않습니다.")
                 Text("알람 출력은 iPhone의 시스템 제한을 따릅니다. 최대 음량을 초과하거나 음량을 강제로 고정할 수 없습니다.")
             }.font(.footnote).listRowBackground(Theme.surface)
         }.appForm().navigationTitle("자동화 연결").navigationBarTitleDisplayMode(.inline)

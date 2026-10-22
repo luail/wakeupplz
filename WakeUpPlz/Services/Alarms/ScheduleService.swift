@@ -14,7 +14,7 @@ struct WakeMetadata: AlarmMetadata { var day: String }
         let dates = routine.alarmEnabled ? engine.alarmDates(routine, now: now) : []
         var desired = Dictionary(uniqueKeysWithValues: dates.map { (alarmID($0), $0) })
         let backups = routine.alarmEnabled ? engine.backupAlarmDates(routine, now: now) : []
-        for backup in backups { desired[backupID(backup.date, minute: backup.minute)] = backup.date }
+        for backup in backups { desired[backupID(backup.date, index: backup.index)] = backup.date }
         let configuration = "\(routine.alarmMinute)-\(routine.sound)"
         let alarms = try AlarmManager.shared.alarms
         for alarm in alarms {
@@ -99,9 +99,9 @@ struct WakeMetadata: AlarmMetadata { var day: String }
         let key = engine.dayKey(date).replacingOccurrences(of: "-", with: "")
         return UUID(uuidString: "AAAAAAAA-0000-0000-0000-" + key + "0000")!
     }
-    private func backupID(_ date: Date, minute: Int) -> UUID {
+    private func backupID(_ date: Date, index: Int) -> UUID {
         let key = engine.dayKey(date).replacingOccurrences(of: "-", with: "")
-        return UUID(uuidString: "CCCCCCCC-" + String(format: "%04d", minute) + "-0000-0000-" + key + "0000")!
+        return UUID(uuidString: "CCCCCCCC-" + String(format: "%04d", index) + "-0000-0000-" + key + "0000")!
     }
     private func schedule(id: UUID, date: Date, routine: Routine) async throws {
         let day = engine.dayKey(date)

@@ -75,12 +75,15 @@ struct RoutineTests {
     }
     @Test func backupAlarmsSurviveMainAlarmUntilVerified() {
         var r = Routine()
-        let afterMain = at(503)
-        let today = engine.backupAlarmDates(r, now: afterMain).filter { engine.dayKey($0.date) == "2026-10-22" }
-        #expect(today.map(\.minute) == Array(4...12))
-        #expect(today.first?.date == at(504))
+        let afterMain = at(503) // Thu 2026-10-22, alarm 08:20
+        let backups = engine.backupAlarmDates(r, now: afterMain)
+        let today = backups.filter { engine.dayKey($0.date) == "2026-10-22" }
+        #expect(today.count == 36 && today.first?.date == at(503).addingTimeInterval(15))
+        #expect(today.last?.date == at(512))
+        #expect(Set(backups.map { engine.dayKey($0.date) }) == ["2026-10-22", "2026-10-23"])
         r.verifiedDays.insert("2026-10-22")
-        #expect(engine.backupAlarmDates(r, now: afterMain).allSatisfy { engine.dayKey($0.date) != "2026-10-22" })
-        #expect(engine.backupAlarmDates(r, now: at(400, day: "2026-10-24")).allSatisfy { engine.dayKey($0.date) != "2026-10-24" })
+        // Friday verified-out of today: next two workdays skip the weekend.
+        #expect(Set(engine.backupAlarmDates(r, now: afterMain).map { engine.dayKey($0.date) }) == ["2026-10-23", "2026-10-26"])
+        #expect(engine.backupAlarmDates(r, now: at(400, day: "2026-10-23")).count == 96)
     }
 }

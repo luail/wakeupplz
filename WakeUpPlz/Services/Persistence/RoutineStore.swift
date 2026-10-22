@@ -62,6 +62,11 @@ import Observation
             catch { self.error = "예약을 적용하지 못했어요. 다시 앱을 열어 확인해주세요. \(error.localizedDescription)" }
         }
     }
+    /// For intents: the process may be suspended right after perform returns.
+    func refreshSchedulesAndWait() async {
+        refreshSchedules()
+        await scheduleTask?.value
+    }
     func addRecipient(name: String, phone: String) -> Bool {
         let number = Recipient.normalized(phone)
         guard (7...15).contains(number.filter(\.isNumber).count) else { error = "유효한 전화번호를 선택해주세요."; return false }
