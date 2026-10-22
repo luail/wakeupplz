@@ -38,7 +38,7 @@ struct HomeView: View {
     private var otherReasonOff: String? { quickOff == nil ? store.engine.reasonOff(tomorrow, store.routine) : nil }
     private var restTomorrow: some View {
         let day = tomorrow.formatted(.dateTime.month().day().weekday())
-        let subtitle = otherReasonOff.map { "\(day) · \($0)\(Self.copula($0)) 쉬어요" }
+        let subtitle = otherReasonOff.map { "\(day) · \($0)\(Self.copula($0)) 이미 쉬어요" }
             ?? (quickOff == nil ? "\(day) · 켜면 알람과 문자를 쉬어요" : "\(day) · 알람과 문자를 쉬어요")
         return HStack(spacing: 14) {
             Image(systemName: "moon.zzz").font(.title3).foregroundStyle(Theme.primary).frame(width: 24)
@@ -47,16 +47,13 @@ struct HomeView: View {
                 Text(subtitle).font(.caption).foregroundStyle(Theme.secondary)
             }
             Spacer(minLength: 8)
-            if otherReasonOff == nil {
-                Toggle("내일 쉬기", isOn: Binding(get: { quickOff != nil }, set: { on in
-                    store.update { r in
-                        if on { let key = store.engine.dayKey(tomorrow); r.daysOff.append(.init(start: key, end: key, title: "내일 쉬기")) }
-                        else if let quickOff { r.daysOff.removeAll { $0.id == quickOff.id } }
-                    }
-                })).labelsHidden().tint(Theme.primary)
-            } else {
-                Text("쉬는 날").font(.subheadline).foregroundStyle(Theme.secondary)
-            }
+            // Always a toggle so the state reads at a glance; days already off show as on and locked.
+            Toggle("내일 쉬기", isOn: Binding(get: { quickOff != nil || otherReasonOff != nil }, set: { on in
+                store.update { r in
+                    if on { let key = store.engine.dayKey(tomorrow); r.daysOff.append(.init(start: key, end: key, title: "내일 쉬기")) }
+                    else if let quickOff { r.daysOff.removeAll { $0.id == quickOff.id } }
+                }
+            })).labelsHidden().tint(Theme.primary).disabled(otherReasonOff != nil)
         }.padding(.vertical, 20)
     }
     /// "주말이라" vs "휴무라": pick the particle from the last syllable's final consonant.

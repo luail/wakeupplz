@@ -17,22 +17,32 @@ struct DaysOffView: View {
                 }
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 8) {
                     ForEach(["일", "월", "화", "수", "목", "금", "토"], id: \.self) { title in Text(title).font(.caption).foregroundStyle(Theme.secondary) }
-                    ForEach((1 - calendar.component(.weekday, from: first))..<0, id: \.self) { _ in Color.clear.frame(height: 44) }
+                    ForEach((1 - calendar.component(.weekday, from: first))..<0, id: \.self) { _ in Color.clear.frame(height: 50) }
                     ForEach(Array(calendar.range(of: .day, in: .month, for: month) ?? 1..<2), id: \.self) { number in
                         let date = calendar.date(byAdding: .day, value: number - 1, to: first)!
                         let off = store.engine.reasonOff(date, store.routine)
+                        let kind = dayKind(date)
                         Button {
                             let key = store.engine.dayKey(date)
                             edit = store.routine.daysOff.first { $0.start <= key && key <= $0.end } ?? DayOff(start: key, end: key, title: "휴무")
                         } label: {
-                            VStack(spacing: 4) {
-                                Text("\(number)").font(.body.monospacedDigit())
-                                Circle().fill(off == nil ? Color.clear : Theme.primary).frame(width: 4, height: 4)
-                            }.frame(maxWidth: .infinity, minHeight: 44).background(calendar.isDateInToday(date) ? Theme.primary.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 12))
-                        }.buttonStyle(.plain).foregroundStyle(off == nil ? Theme.text : Theme.secondary).accessibilityLabel("\(number)일, \(off ?? "근무일")")
+                            VStack(spacing: 2) {
+                                Text("\(number)").font(.body.monospacedDigit().weight(kind == .work ? .regular : .semibold))
+                                // Holiday/day-off name in the cell; weekends need no label.
+                                Text(kind == .holiday || kind == .personal ? (off ?? "") : " ").font(.system(size: 9)).lineLimit(1).minimumScaleFactor(0.7)
+                            }.padding(.horizontal, 2).frame(maxWidth: .infinity, minHeight: 50)
+                            .foregroundStyle(kind == .personal ? Color.white : kind == .work ? Theme.text : kind == .holiday ? Theme.primary : Theme.secondary)
+                            .background(kind.fill, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay { if calendar.isDateInToday(date) { RoundedRectangle(cornerRadius: 12).stroke(Theme.primary, lineWidth: 1.5) } }
+                        }.buttonStyle(.plain).accessibilityLabel("\(number)일, \(off ?? "근무일")")
                     }
                 }
-                Text("점이 있는 날은 쉬는 날이에요. 날짜를 눌러 휴무를 등록하거나 수정할 수 있어요.").font(.caption).foregroundStyle(Theme.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 14) {
+                    legend(DayKind.personal.fill, "내 휴무"); legend(DayKind.holiday.fill, "공휴일"); legend(DayKind.weekend.fill, "주말")
+                    HStack(spacing: 6) { RoundedRectangle(cornerRadius: 4).stroke(Theme.primary, lineWidth: 1.5).frame(width: 14, height: 14); Text("오늘") }
+                    Spacer(minLength: 0)
+                }.font(.caption).foregroundStyle(Theme.secondary)
+                Text("색이 칠해진 날은 알람과 문자를 쉬어요. 날짜를 눌러 휴무를 등록하거나 수정할 수 있어요.").font(.caption).foregroundStyle(Theme.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 PrimaryButton(title: "휴무일 등록", icon: "plus") { adding = true }
                 VStack(spacing: 0) {
                     ForEach(store.routine.daysOff.sorted { $0.start < $1.start }) { off in
@@ -47,6 +57,28 @@ struct DaysOffView: View {
         }.background(Theme.background).foregroundStyle(Theme.text).navigationTitle("휴무일")
             .sheet(isPresented: $adding) { DayOffEditor(off: DayOff(start: store.engine.dayKey(.now), end: store.engine.dayKey(.now), title: "휴무")) }
             .sheet(item: $edit) { DayOffEditor(off: $0) }
+    }
+    private enum DayKind {
+        case work, weekend, holiday, personal
+        var fill: Color {
+            switch self {
+            case .work: .clear
+            case .weekend: Theme.secondary.opacity(0.12)
+            case .holiday: Theme.primary.opacity(0.2)
+            case .personal: Theme.primary
+            }
+        }
+    }
+    // Same precedence as RoutineEngine.reasonOff: personal day off, then holiday, then weekend.
+    private func dayKind(_ date: Date) -> DayKind {
+        let key = store.engine.dayKey(date), r = store.routine
+        if r.daysOff.contains(where: { $0.start <= key && key <= $0.end }) { return .personal }
+        if r.excludeHolidays, KoreanHolidays.days[key] != nil { return .holiday }
+        if r.excludeWeekends, calendar.isDateInWeekend(date) { return .weekend }
+        return .work
+    }
+    private func legend(_ fill: Color, _ title: String) -> some View {
+        HStack(spacing: 6) { RoundedRectangle(cornerRadius: 4).fill(fill).frame(width: 14, height: 14); Text(title) }
     }
     private func move(_ offset: Int) { month = calendar.date(byAdding: .month, value: offset, to: first)! }
 }
