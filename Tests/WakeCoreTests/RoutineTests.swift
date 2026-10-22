@@ -4,12 +4,13 @@ import Testing
 struct RoutineTests {
     let engine = RoutineEngine()
     func at(_ minute: Int, day: String = "2026-10-22") -> Date { engine.time(minute, on: engine.day(day)) }
-    @Test func earlyVerificationIsExactAndCancelsAllSlots() {
+    @Test func verificationOpensAtAlarmIsExactAndCancelsSlots() {
         var r = Routine()
-        #expect(!engine.verify("일어났어! ", routine: &r, now: at(400)))
-        #expect(engine.verify("일어났어!", routine: &r, now: at(400)))
+        #expect(!engine.verify("일어났어!", routine: &r, now: at(499)))  // before the 08:20 alarm
+        #expect(!engine.verify("일어났어! ", routine: &r, now: at(500)))
+        #expect(engine.verify("일어났어!", routine: &r, now: at(500)))
         #expect(engine.slots(r, on: at(510)).isEmpty)
-        #expect(engine.alarmDates(r, now: at(400)).allSatisfy { engine.dayKey($0) != "2026-10-22" })
+        #expect(engine.alarmDates(r, now: at(500)).allSatisfy { engine.dayKey($0) != "2026-10-22" })
         #expect(engine.slots(r, on: at(510, day: "2026-10-23")).count == 3)
     }
     @Test func cancelAfterFirstAndPreventDuplicates() {
@@ -46,8 +47,8 @@ struct RoutineTests {
     }
     @Test func customPhraseAndPhoneNormalization() {
         var r = Routine(); r.phrase = "좋은 아침 ☀️"
-        #expect(!engine.verify("일어났어!", routine: &r, now: at(400)))
-        #expect(engine.verify("좋은 아침 ☀️", routine: &r, now: at(400)))
+        #expect(!engine.verify("일어났어!", routine: &r, now: at(505)))
+        #expect(engine.verify("좋은 아침 ☀️", routine: &r, now: at(505)))
         #expect(Recipient.normalized("+82 10-1234-5678") == Recipient.normalized("010-1234-5678"))
     }
     @Test func ringingAlarmSurvivesRefreshUntilVerifiedOrExcluded() {

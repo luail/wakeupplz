@@ -30,7 +30,7 @@ struct SettingsView: View {
             Section("기상 인증") {
                 Button { phrase = store.routine.phrase; editPhrase = true } label: { LabeledContent("인증 문구", value: store.routine.phrase) }.foregroundStyle(Theme.text)
                 Button { message = store.routine.message; editingMessage = true } label: { Text("미인증 문자 내용") }.foregroundStyle(Theme.text)
-                Text("미리 인증해도 당일 기상으로 인정해요. 공백과 문장부호까지 정확히 입력해야 해요.").font(.caption).foregroundStyle(Theme.secondary)
+                Text("알람 시각부터 인증할 수 있어요. 공백과 문장부호까지 정확히 입력해야 해요.").font(.caption).foregroundStyle(Theme.secondary)
             }.listRowBackground(Theme.surface)
             Section("쉬는 날") {
                 Toggle("주말 제외", isOn: binding(\.excludeWeekends))

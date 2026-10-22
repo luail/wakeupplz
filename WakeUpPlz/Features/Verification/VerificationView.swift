@@ -32,12 +32,21 @@ struct VerificationView: View {
                 }.padding(24)
             }
             if !store.verifiedToday {
-                HStack {
-                    TextField("인증 문구를 입력하세요", text: $text).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.send).onSubmit(send).accessibilityIdentifier("verification.input")
-                    Button(action: send) { Image(systemName: "paperplane.fill").frame(width: 44, height: 44).foregroundStyle(.white).background(Theme.primary, in: Circle()) }.disabled(text.isEmpty).accessibilityLabel("인증 문구 전송")
-                }.padding(8).padding(.leading, 12).background(Theme.surface, in: Capsule()).overlay(Capsule().stroke(Theme.border)).padding(20)
+                TimelineView(.periodic(from: .now, by: 5)) { context in
+                    if store.engine.canVerify(store.routine, now: context.date) { input }
+                    else {
+                        Label("\(RoutineEngine.clock(store.routine.alarmMinute))부터 인증할 수 있어요", systemImage: "lock").font(.subheadline).foregroundStyle(Theme.secondary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 18).background(Theme.surface, in: Capsule()).padding(20)
+                    }
+                }
             }
         }.background(Theme.background).foregroundStyle(Theme.text).navigationTitle("기상 인증").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+    }
+    private var input: some View {
+        HStack {
+            TextField("인증 문구를 입력하세요", text: $text).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.send).onSubmit(send).accessibilityIdentifier("verification.input")
+            Button(action: send) { Image(systemName: "paperplane.fill").frame(width: 44, height: 44).foregroundStyle(.white).background(Theme.primary, in: Circle()) }.disabled(text.isEmpty).accessibilityLabel("인증 문구 전송")
+        }.padding(8).padding(.leading, 12).background(Theme.surface, in: Capsule()).overlay(Capsule().stroke(Theme.border)).padding(20)
     }
     private func send() {
         guard !text.isEmpty else { return }; attempts.append(text)

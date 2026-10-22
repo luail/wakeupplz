@@ -136,8 +136,10 @@ struct RoutineEngine: Sendable {
             return age >= 0 && age < 60 && !routine.claimedSlots.contains(slot.id)
         }
     }
+    /// Verification opens at the alarm time, so it can't be done the night before and slept through.
+    func canVerify(_ routine: Routine, now: Date) -> Bool { now >= time(routine.alarmMinute, on: now) }
     func verify(_ input: String, routine: inout Routine, now: Date) -> Bool {
-        guard input == routine.phrase, routine.validationError == nil else { return false }
+        guard input == routine.phrase, routine.validationError == nil, canVerify(routine, now: now) else { return false }
         routine.verifiedDays.insert(dayKey(now))
         return true
     }

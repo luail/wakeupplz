@@ -37,7 +37,8 @@ import Observation
         } catch { self.error = "설정을 저장하지 못했어요. \(error.localizedDescription)"; return false }
     }
     func verify(_ input: String, now: Date = .now) -> Bool {
-        guard input == routine.phrase else { return false }
+        var verified = routine
+        guard engine.verify(input, routine: &verified, now: now) else { return false }
         return update { $0.verifiedDays.insert(engine.dayKey(now)) }
     }
     var verifiedToday: Bool { routine.verifiedDays.contains(engine.dayKey(.now)) }
