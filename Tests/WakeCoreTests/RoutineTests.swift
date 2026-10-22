@@ -27,7 +27,8 @@ struct RoutineTests {
         #expect(engine.dueSlot(r, now: at(512))?.ordinal == 3)
         #expect(engine.dueSlot(r, now: at(513)) == nil)
         var invalid = r
-        invalid.messageMinute = 1438
+        invalid.alarmMinute = 1428
+        #expect(invalid.messageMinute == 1438)
         #expect(invalid.validationError != nil)
         #expect(engine.slots(invalid, on: at(510)).isEmpty)
     }

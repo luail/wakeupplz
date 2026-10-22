@@ -22,7 +22,7 @@ struct SettingsView: View {
                     }
                 }))
                 Button { editingTime = .alarm } label: { LabeledContent("알람 시각", value: RoutineEngine.clock(store.routine.alarmMinute)) }.foregroundStyle(Theme.text)
-                Button { editingTime = .message } label: { LabeledContent("첫 문자 시각", value: RoutineEngine.clock(store.routine.messageMinute)) }.foregroundStyle(Theme.text)
+                LabeledContent("첫 문자 시각", value: "알람 10분 뒤 · " + RoutineEngine.clock(store.routine.messageMinute))
                 NavigationLink { ContactsView() } label: { LabeledContent("알림 받을 사람", value: "\(store.routine.recipients.count)명") }
                 NavigationLink { SoundsView() } label: { LabeledContent("알람 사운드", value: store.routine.sound.replacingOccurrences(of: ".wav", with: "")) }
             }.listRowBackground(Theme.surface)
@@ -71,10 +71,10 @@ struct SettingsView: View {
     private func binding<T>(_ key: WritableKeyPath<Routine, T>) -> Binding<T> { Binding(get: { store.routine[keyPath: key] }, set: { value in store.update { $0[keyPath: key] = value } }) }
 }
 private enum RoutineTimeField: String, Identifiable {
-    case alarm, message
+    case alarm
     var id: String { rawValue }
-    var title: String { self == .alarm ? "알람 시각" : "첫 문자 시각" }
-    var key: WritableKeyPath<Routine, Int> { self == .alarm ? \.alarmMinute : \.messageMinute }
+    var title: String { "알람 시각" }
+    var key: WritableKeyPath<Routine, Int> { \.alarmMinute }
 }
 private struct TimeEditor: View {
     @Environment(RoutineStore.self) private var store

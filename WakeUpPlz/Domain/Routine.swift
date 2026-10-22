@@ -19,7 +19,6 @@ struct DayOff: Codable, Identifiable, Equatable, Sendable {
 }
 struct Routine: Codable, Equatable, Sendable {
     var alarmMinute = 8 * 60 + 20
-    var messageMinute = 8 * 60 + 30
     var phrase = "일어났어!"
     var message = "아직 기상 인증을 하지 않았어요. WakeUpPlz에서 확인 부탁드려요."
     var recipients: [Recipient] = []
@@ -33,9 +32,12 @@ struct Routine: Codable, Equatable, Sendable {
     var messageRemindersEnabled = false
     var verifiedDays: Set<String> = []
     var claimedSlots: Set<String> = []
+    // Always 10 minutes after the alarm; older saved files' messageMinute key is ignored on decode.
+    static let messageDelay = 10
+    var messageMinute: Int { alarmMinute + Self.messageDelay }
     var validationError: String? {
         if !(0..<1440).contains(alarmMinute) { return "알람 시각을 확인해주세요." }
-        if messageMinute <= alarmMinute || messageMinute > 1437 { return "문자 시각은 알람 이후, 오후 11:57 이전이어야 해요." }
+        if messageMinute > 1437 { return "알람은 오후 11:47 이전이어야 해요. 문자가 알람 10분 뒤에 3회 발송돼요." }
         if phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || phrase.count > 80 { return "인증 문구는 1~80자로 입력해주세요." }
         if message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "문자 내용을 입력해주세요." }
         return nil
