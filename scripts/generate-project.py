@@ -5,8 +5,13 @@ import re
 root = Path(__file__).resolve().parents[1]
 existing_project = root / 'WakeUpPlz.xcodeproj/project.pbxproj'
 existing_text = existing_project.read_text() if existing_project.exists() else ''
+# The team ID stays out of the public repo: Signing.xcconfig optionally includes the git-ignored
+# .local/Signing.xcconfig. Move a team ID left in an older project file there once.
 team_match = re.search(r'DEVELOPMENT_TEAM\s*=\s*([A-Z0-9]+);', existing_text)
-development_team = team_match.group(1) if team_match else None
+local_signing = root / '.local/Signing.xcconfig'
+if team_match and not local_signing.exists():
+    local_signing.parent.mkdir(exist_ok=True)
+    local_signing.write_text(f'DEVELOPMENT_TEAM = {team_match.group(1)}\n')
 def uid(value): return hashlib.sha1(value.encode()).hexdigest()[:24].upper()
 files = sorted((root / 'WakeUpPlz').rglob('*.swift')) + sorted((root / 'WakeUpPlz/Resources').glob('*.wav')) + sorted((root / 'WakeUpPlz/Resources').glob('*.xcassets'))
 objects = []
@@ -19,6 +24,8 @@ for file in files:
     add(path, f'isa = PBXFileReference; lastKnownFileType = {typ}; path = "{path}"; sourceTree = SOURCE_ROOT;')
     add('build'+path, f'isa = PBXBuildFile; fileRef = {file_id};')
     (sources if file.suffix == '.swift' else resources).append(build_id)
+add('Signing.xcconfig', 'isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = SOURCE_ROOT;')
+refs.append(uid('Signing.xcconfig'))
 add('app', 'isa = PBXFileReference; explicitFileType = wrapper.application; path = WakeUpPlz.app; sourceTree = BUILT_PRODUCTS_DIR;')
 add('group', f'isa = PBXGroup; children = ({",".join(refs + [uid("products")])}); sourceTree = "<group>";')
 add('products', f'isa = PBXGroup; children = ({uid("app")}); name = Products; sourceTree = "<group>";')
@@ -31,10 +38,9 @@ for scope in ['project','target']:
         settings = 'SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 26.0; SWIFT_VERSION = 6.0; CLANG_ENABLE_MODULES = YES;'
         if scope == 'target':
             settings += ' PRODUCT_NAME = "$(TARGET_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = com.luail.WakeUpPlz; TARGETED_DEVICE_FAMILY = 1; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = WakeUpPlz; INFOPLIST_FILE = WakeUpPlz/App/Info.plist; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait; SUPPORTS_MACCATALYST = NO; SWIFT_EMIT_LOC_STRINGS = YES; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; MARKETING_VERSION = 0.1; CURRENT_PROJECT_VERSION = 19;'
-        if scope == 'target' and development_team:
-            settings += f' DEVELOPMENT_TEAM = {development_team};'
         settings += ' SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; DEBUG_INFORMATION_FORMAT = dwarf;' if config == 'Debug' else ' SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O";'
-        add(scope+config, f'isa = XCBuildConfiguration; buildSettings = {{ {settings} }}; name = {config};')
+        base = f' baseConfigurationReference = {uid("Signing.xcconfig")};' if scope == 'target' else ''
+        add(scope+config, f'isa = XCBuildConfiguration;{base} buildSettings = {{ {settings} }}; name = {config};')
     add(scope+'configs', f'isa = XCConfigurationList; buildConfigurations = ({uid(scope+"Debug")},{uid(scope+"Release")}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
 (root/'WakeUpPlz.xcodeproj/project.pbxproj').write_text('// !$*UTF8*$!\n{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n'+'\n'.join(objects)+'\n}; rootObject = '+uid('project')+'; }\n')
 scheme = f'''<?xml version="1.0" encoding="UTF-8"?>

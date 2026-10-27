@@ -3,8 +3,14 @@ then message each recipient. Sign before importing:
   python3 scripts/make-shortcut.py out.shortcut && shortcuts sign --mode anyone -i out.shortcut -o signed.shortcut
 """
 import plistlib
+import re
 import sys
 import uuid
+from pathlib import Path
+
+# The team ID lives in the git-ignored .local/Signing.xcconfig (see generate-project.py).
+signing = Path(__file__).resolve().parents[1] / '.local/Signing.xcconfig'
+team_id = re.search(r'DEVELOPMENT_TEAM\s*=\s*([A-Z0-9]+)', signing.read_text()).group(1)
 
 def new_id(): return str(uuid.uuid4()).upper()
 def output(action_id, name):
@@ -18,7 +24,7 @@ actions = [
     # Returns "" unless a 1-minute slot is due and today is still unverified, so nothing is sent otherwise.
     {"WFWorkflowActionIdentifier": "com.luail.WakeUpPlz.PendingMessageIntent", "WFWorkflowActionParameters": {
         "UUID": request,
-        "AppIntentDescriptor": {"TeamIdentifier": "REDACTED", "BundleIdentifier": "com.luail.WakeUpPlz", "Name": "WakeUpPlz", "AppIntentIdentifier": "PendingMessageIntent"}}},
+        "AppIntentDescriptor": {"TeamIdentifier": team_id, "BundleIdentifier": "com.luail.WakeUpPlz", "Name": "WakeUpPlz", "AppIntentIdentifier": "PendingMessageIntent"}}},
     {"WFWorkflowActionIdentifier": "is.workflow.actions.detect.dictionary", "WFWorkflowActionParameters": {
         "UUID": dictionary, "WFInput": output(request, intent_name)}},
     {"WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey", "WFWorkflowActionParameters": {

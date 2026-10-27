@@ -1,0 +1,3 @@
+// DEVELOPMENT_TEAM is kept out of the repo. Put your own in .local/Signing.xcconfig:
+//   DEVELOPMENT_TEAM = ABCDE12345
+#include? ".local/Signing.xcconfig"
