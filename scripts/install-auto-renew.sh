@@ -1,5 +1,6 @@
 #!/bin/zsh
-# Install (or with --uninstall, remove) the launchd agent that runs auto-renew.sh every 3 hours.
+# Install (or with --uninstall, remove) the launchd agent that runs auto-renew.sh every hour.
+# A calendar interval, unlike StartInterval, runs a slot missed during sleep once the Mac wakes.
 set -eu
 root="${0:A:h:h}"
 label="com.luail.wakeupplz.auto-renew"
@@ -16,7 +17,7 @@ cat > "$plist" <<EOF
 <dict>
   <key>Label</key><string>$label</string>
   <key>ProgramArguments</key><array><string>/bin/zsh</string><string>$root/scripts/auto-renew.sh</string></array>
-  <key>StartInterval</key><integer>10800</integer>
+  <key>StartCalendarInterval</key><dict><key>Minute</key><integer>0</integer></dict>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$root/.local/launchd.log</string>
   <key>StandardErrorPath</key><string>$root/.local/launchd.log</string>
@@ -24,4 +25,4 @@ cat > "$plist" <<EOF
 </plist>
 EOF
 launchctl bootstrap "gui/$(id -u)" "$plist"
-print "자동 갱신 설치 완료: 3시간마다 확인, 만료 3일 전부터 갱신 시도."
+print "자동 갱신 설치 완료: 매시 정각 확인(잠자기 중 놓친 회차는 깨어날 때 실행), 만료 3일 전부터 갱신 시도."
