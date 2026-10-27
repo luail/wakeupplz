@@ -101,6 +101,35 @@ import Testing
         let r = try JSONDecoder().decode(Routine.self, from: Data(saved.utf8))
         #expect(r.alarmMinute == 420 && r.phrase == "기상" && r.workDays.isEmpty && r.excludeWeekends)
     }
+    @Test func napAfterVerifiedMorningRingsAndMessagesUntilVerified() {
+        var r = Routine(); r.alarmEnabled = true
+        #expect(engine.verify(r.phrase, routine: &r, now: at(505)))  // Thu morning
+        r.extraAlarms = [.init(day: "2026-10-22", minute: 900)]  // 15:00 nap
+        #expect(!engine.canVerify(r, now: at(899)))
+        #expect(engine.nextVerification(r, now: at(899)) == at(900))
+        #expect(engine.extraAlarmDates(r, now: at(899)).map(\.date) == [at(900)])
+        #expect(engine.slots(r, on: at(0)).map(\.id) == ["2026-10-22+1500-0", "2026-10-22+1500-1", "2026-10-22+1500-2"])
+        #expect(engine.dueSlot(r, now: at(910))?.id == "2026-10-22+1500-0")
+        #expect(engine.shouldContinueAlarm(on: at(900), routine: r, now: at(901)))
+        let backups = engine.backupAlarmDates(r, now: at(899))
+        #expect(backups.filter { $0.extra != nil }.count == 48)
+        #expect(Set(backups.filter { $0.extra == nil }.map { engine.dayKey($0.date) }) == ["2026-10-23"])  // one main day while a nap is pending
+        #expect(engine.verify(r.phrase, routine: &r, now: at(902)))
+        #expect(!engine.canVerify(r, now: at(903)) && engine.slots(r, on: at(0)).isEmpty)
+        #expect(!engine.shouldContinueAlarm(on: at(900), routine: r, now: at(903)))
+        #expect(engine.backupAlarmDates(r, now: at(903)).count == 96)
+    }
+    @Test func napOnWeekendIgnoresDayOffAndVerifiesSeparately() {
+        var r = Routine()
+        r.extraAlarms = [.init(day: "2026-10-22", minute: 400), .init(day: "2026-10-24", minute: 840)]  // Thu 06:40, Sat 14:00
+        #expect(engine.slots(r, on: engine.day("2026-10-24")).count == 3)
+        #expect(engine.verify(r.phrase, routine: &r, now: at(401)))  // before the 08:20 alarm
+        #expect(r.verifiedExtras == ["2026-10-22+0640"] && r.verifiedDays.isEmpty)
+        #expect(engine.nextVerification(r, now: at(401)) == at(500))
+        #expect(engine.slots(r, on: at(0)).count == 3)  // morning messages still on
+        r.extraAlarms.append(.init(day: "2026-10-22", minute: 1428))
+        #expect(r.validationError != nil)
+    }
     @Test func downloadedHolidaysReplaceBundledYear() {
         KoreanHolidays.setDownloaded([2028: ["2028-01-03": "임시공휴일"]])
         defer { KoreanHolidays.setDownloaded([:]) }

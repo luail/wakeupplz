@@ -3,25 +3,19 @@ import SwiftUI
 struct HomeView: View {
     @Environment(RoutineStore.self) private var store
     @State private var showVerification = false
-    private var next: Date? { store.engine.alarmDates(store.routine, now: .now, days: 370).first }
     private var tomorrow: Date { store.engine.calendar.date(byAdding: .day, value: 1, to: .now)! }
     private var quickOff: DayOff? { store.routine.daysOff.first { $0.start == store.engine.dayKey(tomorrow) && $0.end == $0.start && $0.title == "내일 쉬기" } }
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                VStack(spacing: 12) {
-                    Image(systemName: store.verifiedToday ? "checkmark.circle" : "sunrise").font(.system(size: 30, weight: .light)).foregroundStyle(Theme.primary)
-                    Text(store.verifiedToday ? "오늘 기상 인증 완료" : "다음 기상 알람").font(.subheadline).foregroundStyle(Theme.secondary)
-                    Text(RoutineEngine.clock(store.routine.alarmMinute)).font(.system(size: 80, weight: .regular, design: .rounded)).tracking(-4).minimumScaleFactor(0.6).lineLimit(1).foregroundStyle(Theme.primary)
-                    if let next { Text(next.formatted(.dateTime.month().day().weekday()) + " · 근무일").font(.subheadline).foregroundStyle(Theme.secondary) }
-                    Text(store.routine.alarmEnabled ? "알람 켜짐" : "알람 꺼짐 · 설정에서 켜주세요").font(.caption).foregroundStyle(Theme.secondary)
-                    PrimaryButton(title: store.verifiedToday ? "인증 완료 확인" : "기상 인증하기", icon: store.verifiedToday ? "checkmark" : nil) { showVerification = true }.padding(.top, 16)
-                }.padding(24).frame(maxWidth: .infinity).background(Theme.surface, in: RoundedRectangle(cornerRadius: 28)).padding(.top, 16).padding(.bottom, 24)
+                TimelineView(.everyMinute) { context in hero(now: context.date) }.padding(24).frame(maxWidth: .infinity).background(Theme.surface, in: RoundedRectangle(cornerRadius: 28)).padding(.top, 16).padding(.bottom, 24)
                 info("미인증 문자", subtitle: "1분 간격 3회 · 인증하면 남은 회차 취소", icon: "paperplane", value: RoutineEngine.clock(store.routine.messageMinute))
                 Divider().overlay(Theme.border)
                 NavigationLink { ContactsView() } label: {
                     info("알림 받을 사람", subtitle: store.routine.activeRecipients.isEmpty ? "문자 받을 사람을 선택해주세요" : store.routine.activeRecipients.map(\.name).joined(separator: ", "), icon: "person.crop.circle", value: "\(store.routine.activeRecipients.count)명")
                 }.buttonStyle(.plain)
+                Divider().overlay(Theme.border)
+                TimelineView(.everyMinute) { context in extraAlarm(now: context.date) }
                 Divider().overlay(Theme.border)
                 restTomorrow
                 if !store.routine.messageRemindersEnabled {
@@ -33,6 +27,54 @@ struct HomeView: View {
             }.padding(.horizontal, 24).padding(.bottom, 24)
         }.background(Theme.background).foregroundStyle(Theme.text).navigationTitle("WakeUpPlz").navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showVerification) { NavigationStack { VerificationView() } }
+    }
+    private func hero(now: Date) -> some View {
+        let engine = store.engine, routine = store.routine
+        let done = !engine.canVerify(routine, now: now)
+            && (store.verifiedToday || routine.verifiedExtras.contains { $0.hasPrefix(engine.dayKey(now)) })
+        let main = engine.alarmDates(routine, now: now, days: 370).first
+        // An extra alarm takes the spotlight only while it comes before the next main alarm.
+        let extra = engine.extraAlarmDates(routine, now: now).first.flatMap { e in main.map { e.date < $0 } ?? true ? e : nil }
+        return VStack(spacing: 12) {
+            Image(systemName: done ? "checkmark.circle" : "sunrise").font(.system(size: 30, weight: .light)).foregroundStyle(Theme.primary)
+            Text(done ? "오늘 기상 인증 완료" : "다음 기상 알람").font(.subheadline).foregroundStyle(Theme.secondary)
+            Text(RoutineEngine.clock(extra?.extra.minute ?? routine.alarmMinute)).font(.system(size: 80, weight: .regular, design: .rounded)).tracking(-4).minimumScaleFactor(0.6).lineLimit(1).foregroundStyle(Theme.primary)
+            if let next = extra?.date ?? main { Text(next.formatted(.dateTime.month().day().weekday()) + (extra == nil ? " · 근무일" : " · 추가 알람")).font(.subheadline).foregroundStyle(Theme.secondary) }
+            Text(routine.alarmEnabled ? "알람 켜짐" : "알람 꺼짐 · 설정에서 켜주세요").font(.caption).foregroundStyle(Theme.secondary)
+            PrimaryButton(title: done ? "인증 완료 확인" : "기상 인증하기", icon: done ? "checkmark" : nil) { showVerification = true }.padding(.top, 16)
+        }
+    }
+    /// Today's one-off alarm, e.g. a nap; it rings and messages like the morning alarm.
+    private func extraAlarm(now: Date) -> some View {
+        let engine = store.engine
+        let extra = store.todayExtra
+        let at = extra.map { engine.time($0.minute, on: now) }
+        let lastMinute = 1427  // messages must fit before midnight, as with the main alarm
+        let nowMinute = engine.calendar.component(.hour, from: now) * 60 + engine.calendar.component(.minute, from: now)
+        let verified = store.routine.extraAlarms.last { $0.day == engine.dayKey(now) && store.routine.verifiedExtras.contains($0.id) }
+        let subtitle: String
+        if let extra, let at, at > now { subtitle = "\(RoutineEngine.clock(extra.minute))에 울려요 · 인증 안 하면 \(RoutineEngine.clock(extra.minute + Routine.messageDelay))부터 문자" }
+        else if let extra { subtitle = "\(RoutineEngine.clock(extra.minute))에 울렸어요 · 기상 인증해주세요" }
+        else if let verified { subtitle = "\(RoutineEngine.clock(verified.minute)) 인증 완료 · 켜면 한 번 더 울려요" }
+        else { subtitle = "낮잠 등 오늘 한 번 더 · 알람과 문자가 똑같이 동작해요" }
+        return HStack(spacing: 14) {
+            Image(systemName: "alarm").font(.title3).foregroundStyle(Theme.primary).frame(width: 24)
+            VStack(alignment: .leading, spacing: 5) {
+                Text("오늘 추가 알람").font(.subheadline.weight(.medium))
+                Text(subtitle).font(.caption).foregroundStyle(Theme.secondary)
+            }
+            Spacer(minLength: 8)
+            if let at, at > now {
+                DatePicker("추가 알람 시각", selection: Binding(get: { at }, set: { date in
+                    let parts = engine.calendar.dateComponents([.hour, .minute], from: date)
+                    store.setExtraAlarm(parts.hour! * 60 + parts.minute!)
+                }), in: now...engine.time(lastMinute, on: now), displayedComponents: .hourAndMinute).labelsHidden()
+            }
+            Toggle("오늘 추가 알람", isOn: Binding(get: { extra != nil }, set: { on in
+                // Default to an hour from now, rounded up to five minutes.
+                store.setExtraAlarm(on ? min(lastMinute, (nowMinute + 60 + 4) / 5 * 5) : nil)
+            })).labelsHidden().tint(Theme.primary).disabled(extra == nil && nowMinute >= lastMinute)
+        }.padding(.vertical, 20)
     }
     private var tomorrowKey: String { store.engine.dayKey(tomorrow) }
     /// A registered day off other than the quick toggle; edited from the calendar instead.

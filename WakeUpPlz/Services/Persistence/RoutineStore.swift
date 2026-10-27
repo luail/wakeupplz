@@ -40,15 +40,29 @@ import Observation
     func verify(_ input: String, now: Date = .now) -> Bool {
         var verified = routine
         guard engine.verify(input, routine: &verified, now: now) else { return false }
-        return update { $0.verifiedDays.insert(engine.dayKey(now)) }
+        return update { $0.verifiedDays = verified.verifiedDays; $0.verifiedExtras = verified.verifiedExtras }
     }
     var verifiedToday: Bool { routine.verifiedDays.contains(engine.dayKey(.now)) }
+    /// Today's extra alarm that still waits for verification, whether or not it has rung yet.
+    var todayExtra: ExtraAlarm? { routine.extraAlarms.first { $0.day == engine.dayKey(.now) && !routine.verifiedExtras.contains($0.id) } }
+    /// Sets today's one-off alarm, or removes it with nil. Verified ones stay so their alarms and
+    /// messages remain cancelled; earlier days are pruned.
+    @discardableResult func setExtraAlarm(_ minute: Int?, now: Date = .now) -> Bool {
+        let today = engine.dayKey(now)
+        if let minute, engine.time(minute, on: now) <= now { error = "지난 시각은 고를 수 없어요."; return false }
+        return update { r in
+            r.extraAlarms.removeAll { $0.day < today || ($0.day == today && !r.verifiedExtras.contains($0.id)) }
+            r.verifiedExtras = r.verifiedExtras.filter { $0 >= today }
+            if let minute { r.extraAlarms.append(.init(day: today, minute: minute)) }
+        }
+    }
     #if DEBUG
     /// Test-only: clears today's verification and message claims so alarms can be re-run.
     func resetToday() {
         let key = engine.dayKey(.now)
         update { r in
             r.verifiedDays.remove(key)
+            r.verifiedExtras = r.verifiedExtras.filter { !$0.hasPrefix(key) }
             r.claimedSlots = r.claimedSlots.filter { !$0.hasPrefix(key) }
         }
     }

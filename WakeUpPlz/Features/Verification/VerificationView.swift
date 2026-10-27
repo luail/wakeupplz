@@ -7,7 +7,13 @@ struct VerificationView: View {
     @State private var attempts: [String] = []
     @State private var wrong = false
     var body: some View {
-        VStack(spacing: 0) {
+        TimelineView(.periodic(from: .now, by: 5)) { context in content(now: context.date) }
+            .background(Theme.background).foregroundStyle(Theme.text).navigationTitle("기상 인증").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+    }
+    private func content(now: Date) -> some View {
+        let open = store.engine.canVerify(store.routine, now: now)
+        let done = !open && (store.verifiedToday || store.routine.verifiedExtras.contains { $0.hasPrefix(store.engine.dayKey(now)) })
+        return VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 22) {
                     Text(Date.now.formatted(.dateTime.month().day().weekday())).font(.caption).foregroundStyle(Theme.secondary)
@@ -22,8 +28,8 @@ struct VerificationView: View {
                     ForEach(Array(attempts.enumerated()), id: \.offset) { _, attempt in
                         HStack { Spacer(minLength: 40); Text(attempt).padding(18).foregroundStyle(.white).background(Theme.primary, in: RoundedRectangle(cornerRadius: 20)) }
                     }
-                    if store.verifiedToday {
-                        Label("기상 인증이 완료됐어요.\n오늘 남은 알람과 문자 예약을 취소해요.", systemImage: "checkmark.circle.fill").font(.subheadline).padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20)).accessibilityIdentifier("verification.success")
+                    if done {
+                        Label("기상 인증이 완료됐어요.\n울린 알람과 남은 문자 예약을 취소해요.", systemImage: "checkmark.circle.fill").font(.subheadline).padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Theme.surface, in: RoundedRectangle(cornerRadius: 20)).accessibilityIdentifier("verification.success")
                         #if DEBUG
                         Button("오늘 인증 초기화 (테스트용)") { store.resetToday(); attempts = [] }.font(.footnote).foregroundStyle(Theme.secondary)
                         #endif
@@ -31,16 +37,12 @@ struct VerificationView: View {
                     if wrong { Text("문구가 일치하지 않아요. 띄어쓰기와 느낌표도 확인해주세요.").font(.caption).foregroundStyle(.red).accessibilityIdentifier("verification.error") }
                 }.padding(24)
             }
-            if !store.verifiedToday {
-                TimelineView(.periodic(from: .now, by: 5)) { context in
-                    if store.engine.canVerify(store.routine, now: context.date) { input }
-                    else {
-                        Label("\(RoutineEngine.clock(store.routine.alarmMinute))부터 인증할 수 있어요", systemImage: "lock").font(.subheadline).foregroundStyle(Theme.secondary)
-                            .frame(maxWidth: .infinity).padding(.vertical, 18).background(Theme.surface, in: Capsule()).padding(20)
-                    }
-                }
+            if open { input }
+            else if let next = store.engine.nextVerification(store.routine, now: now) {
+                Label("\(RoutineEngine.clock(store.engine.calendar.component(.hour, from: next) * 60 + store.engine.calendar.component(.minute, from: next)))부터 인증할 수 있어요", systemImage: "lock").font(.subheadline).foregroundStyle(Theme.secondary)
+                    .frame(maxWidth: .infinity).padding(.vertical, 18).background(Theme.surface, in: Capsule()).padding(20)
             }
-        }.background(Theme.background).foregroundStyle(Theme.text).navigationTitle("기상 인증").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .topBarTrailing) { Button("닫기") { dismiss() } } }
+        }
     }
     private var input: some View {
         HStack {

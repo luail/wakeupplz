@@ -13,8 +13,9 @@ struct WakeMetadata: AlarmMetadata { var day: String }
         let now = Date.now
         let dates = routine.alarmEnabled ? engine.alarmDates(routine, now: now) : []
         var desired = Dictionary(uniqueKeysWithValues: dates.map { (alarmID($0), $0) })
+        if routine.alarmEnabled { for (extra, date) in engine.extraAlarmDates(routine, now: now) { desired[alarmID(date, extra: extra)] = date } }
         let backups = routine.alarmEnabled ? engine.backupAlarmDates(routine, now: now) : []
-        for backup in backups { desired[backupID(backup.date, index: backup.index)] = backup.date }
+        for backup in backups { desired[backupID(backup.date, index: backup.index, extra: backup.extra)] = backup.date }
         let configuration = "\(routine.alarmMinute)-\(routine.sound)"
         let alarms = try AlarmManager.shared.alarms
         for alarm in alarms {
@@ -95,13 +96,15 @@ struct WakeMetadata: AlarmMetadata { var day: String }
         let id = UUID(uuidString: "BBBBBBBB" + UUID().uuidString.dropFirst(8))!
         try await schedule(id: id, date: date, routine: routine)
     }
-    private func alarmID(_ date: Date) -> UUID {
-        let key = engine.dayKey(date).replacingOccurrences(of: "-", with: "")
-        return UUID(uuidString: "AAAAAAAA-0000-0000-0000-" + key + "0000")!
+    /// Extra alarms use group 0001 and keep their HHMM in the last digits, so they never collide with the day's main alarm.
+    private func alarmID(_ date: Date, extra: ExtraAlarm? = nil) -> UUID {
+        UUID(uuidString: "AAAAAAAA-\(extra == nil ? "0000" : "0001")-0000-0000-" + idSuffix(date, extra))!
     }
-    private func backupID(_ date: Date, index: Int) -> UUID {
-        let key = engine.dayKey(date).replacingOccurrences(of: "-", with: "")
-        return UUID(uuidString: "CCCCCCCC-" + String(format: "%04d", index) + "-0000-0000-" + key + "0000")!
+    private func backupID(_ date: Date, index: Int, extra: ExtraAlarm? = nil) -> UUID {
+        UUID(uuidString: "CCCCCCCC-" + String(format: "%04d", index) + "-\(extra == nil ? "0000" : "0001")-0000-" + idSuffix(date, extra))!
+    }
+    private func idSuffix(_ date: Date, _ extra: ExtraAlarm?) -> String {
+        engine.dayKey(date).replacingOccurrences(of: "-", with: "") + (extra.map { String(format: "%02d%02d", $0.minute / 60, $0.minute % 60) } ?? "0000")
     }
     private func schedule(id: UUID, date: Date, routine: Routine) async throws {
         let day = engine.dayKey(date)
